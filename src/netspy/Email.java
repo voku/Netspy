@@ -11,7 +11,9 @@ import utilities.ReadFile;
 
 public class Email {
 
-	static private int counterAction = 1;
+	// threshold value
+	static private int counterAction = 2;
+	
 	private String machtedWords = "";
 	private String machtedContext = "";
 	private String path = "";
@@ -24,6 +26,7 @@ public class Email {
 	private String plaintext = "";
 	private String htmltext = "";
 	private String from = "";
+	private String attachment = "";
 	private ArrayList<String> to = new ArrayList<String>();
 
 	/**
@@ -65,6 +68,20 @@ public class Email {
 		this.htmltext = htmltext;
 	}
 
+	/**
+	 * @return
+	 */
+	public String getAttachment() {
+		return this.attachment;
+	}
+
+	/**
+	 * @param attachment
+	 */
+	private void setAttachment(String attachment) {
+		this.attachment = attachment;
+	}
+	
 	/**
 	 * @return
 	 */
@@ -435,56 +452,78 @@ public class Email {
         		// DEBUG
         		//System.out.println(y + ".)" + StringTmp1);
 	    		
+	    		y = z-1;
+	    		continue;
+        	}
+        	
+        	// get the "Attachment" from this E-Mail
+        	if (fullMail[y].matches("------=_NextPart" + ".*" + "--") == true)
+        	{
+        		z = y;
+	    		StringTmp1 = "";
+	    		
+	    		if (fullMail[z] == null) continue;
+	    		
+        		// DEBUG
+        		//System.out.println(fullMail[z]);
+	    		
+	    		do {	
+	    			StringTmp1 += fullMail[z];
+	    			z++;
+	    			
+	    			if (fullMail[z] == null) break;
+	    			
+	        		// DEBUG
+	        		//System.out.println(fullMail[z]);
+	    			
+	    		} while (fullMail[z].matches("------=_NextPart" + ".*" + "--") != true);
+	    		this.setAttachment(StringTmp1);
+	    		
+        		// DEBUG
+        		//System.out.println(y + ".)" + StringTmp1);
+	    		
 	    		y = z;
 	    		continue;
         	}
-    		
+        	
         }
         
 	}
 
 	/**
 	 * @param word
+	 * @param emailText
 	 * @return
 	 */
-	private int searchForBadWord(String word) {
+	private int searchForBadWord(String word, String emailText) {
 		/**
-		 * count the number of one bad word in a mail
+		 * count the number of one bad word in a e-mail
 		 */
 
 		int counter = 0;
-		String emailText;
 		
-		emailText = this.getPlaintext() + this.getHtmltext() + this.getSubject();
-		
-		try {
-			emailText = URLDecoder.decode(IOHelp.replaceUmlaute(emailText), "UTF-8");
-		} catch (UnsupportedEncodingException err) {
-			System.err.println("Error by URL-decoding -> " + err);
+		if (0 != word.length() && 0 != emailText.length()) 
+		{
+			// DEBUG
+			//System.out.println("E-Mail + Suchwort: " + emailText + " " + word);
+			
+			GeneralTextparser textparserText = new GeneralTextparser(emailText, word);
+			counter = textparserText.hitCount();
 		}
-		
-		emailText = emailText.toLowerCase();
-		word = word.toLowerCase();
-		
-		// DEBUG
-		//System.out.println("E-Mail + Suchwort: " + emailText + " " + word);
-		
-		GeneralTextparser textparserText = new GeneralTextparser(emailText, word);
-		counter = textparserText.hitCount();
 		
 		return counter;
 	}
 	
 	/**
 	 * @param word
+	 * @param emailText
 	 * @return
 	 */
-	private String searchForBadWordContext(String word) {
+	private String searchForBadWordContext(String word, String emailText) {
 		/**
-		 * return the content of the bad word
+		 * return the content right and left beside to the bad word
 		 */
 		
-		String emailText;
 		String tmpText = "";
 		String tmpText2;
 		int l = 0;
@@ -494,50 +533,48 @@ public class Email {
 		int emailTextLength = 0;
 		int wordLength = 0;
 		
-		emailText = this.getSubject() + this.getPlaintext() + this.getHtmltext();
-		
-		try {
-			emailText = URLDecoder.decode(IOHelp.replaceUmlaute(emailText), "UTF-8");
-		} catch (UnsupportedEncodingException err) {
-			System.err.println("Error by URL-decoding -> " + err);
-		}
-		
-		emailText = emailText.toLowerCase();
-		word = word.toLowerCase();
-		
-		// DEBUG
-		//System.out.println("E-Mail + Suchwort: " + emailText + " " + word);
-		
-		emailTextLength = emailText.length();
-		wordLength = word.length();
-		
-		GeneralTextparser textparserText = new GeneralTextparser(emailText, word);
-		tmpText2 = textparserText.isWhereAvailable();
-		
-		String[] arr = tmpText2.split(",");
-		for (int u = 0; u < arr.length; u++)
+		if (0 != word.length() && 0 != emailText.length()) 
 		{
-    		// DEBUG
-    		//System.out.println("-" + arr[u] + "-");
-    		
-    		i = new Integer(arr[u]);
-    		
-    		if (i + wordLength < emailTextLength) 
-    			y = i + wordLength;
-    		else 
-    			y = i;
-    		
-    		if (y + 20 < emailTextLength) 
-    			z = y + 20;
-    		
-    		l = i;
-    		for (int a = 0; a < 20; a++)
-    		{
-    			if (l > 0) l--;
-    		}
-    		
-    		tmpText = tmpText + emailText.substring(l,y-wordLength) + "*****" + emailText.substring(i,y) + "*****" + emailText.substring(y,z) + "\n";
-    		
+			// DEBUG
+			//System.out.println("E-Mail + Suchwort: " + emailText + " " + word);
+			
+			emailTextLength = emailText.length();
+			wordLength = word.length();
+			
+			GeneralTextparser textparserText = new GeneralTextparser(emailText, word);
+			tmpText2 = textparserText.isWhereAvailable();
+			
+			String[] arr = tmpText2.split(",");
+			for (int u = 0; u < arr.length; u++)
+			{
+				// protection
+				if (arr[u] == null) break;
+				
+	    		i = new Integer(arr[u]);
+	    		y = i + wordLength;
+	    		
+	    		z = i;
+	    		for (int a = 0; a < 20; a++)
+	    		{
+		    		// DEBUG
+		    		//System.out.println(a + " " + z);
+	    			
+	    			if (z >= emailTextLength) break;
+	    			z++;
+	    		}
+	    		
+	    		l = i;
+	    		for (int a = 0; a < 20; a++)
+	    		{
+		    		// DEBUG
+		    		//System.out.println(a + " " + l);
+	    			
+	    			if (l <= 0) break; 
+	    			l--;
+	    		}
+	    		
+	    		tmpText = tmpText + emailText.substring(l,y-wordLength) + "*****" + emailText.substring(i,y) + "*****" + emailText.substring(y,z) + "\n";
+			}
 		}
 
 		return tmpText;
@@ -550,7 +587,7 @@ public class Email {
 	 */
 	public void parseDir(ArrayList<Email> emails, File dirNew) throws IOException {
 		/**
-		 * parse all e-mails and check with the blacklist
+		 * parse all e-mails and check with the blacklist & whitelist
 		 */
 		
 		int mailCounter = 0;
@@ -568,9 +605,40 @@ public class Email {
 			
 			int counter = 0;
 			boolean searchAddressDone = false;
+			boolean searchInHtmltext = true;
+			boolean searchInPaintext = true;
+			boolean searchInSubject = true;
+			boolean searchInAttachment = true;
 			String searchWordNew = "";
+			String emailText = "";
+			
 			this.machtedWords = "";
 			this.machtedContext = "";
+			
+			if (searchInHtmltext == true)
+			{
+				emailText += mail.getHtmltext();
+			}
+			if (searchInPaintext == true)
+			{
+				emailText += mail.getPlaintext();
+			}
+			if (searchInSubject == true)
+			{
+				emailText += mail.getSubject();
+			}
+			if (searchInAttachment == true)
+			{
+				emailText += mail.getAttachment();
+			}
+			
+			try {
+				emailText = URLDecoder.decode(IOHelp.replaceUmlaute(emailText), "UTF-8");
+			} catch (UnsupportedEncodingException err) {
+				System.err.println("Error by URL-decoding -> " + err);
+			}
+			
+			String emailTextDone = emailText.toLowerCase();
 			
 			for (String searchAddress : whitelist_1.getList())
 			{
@@ -591,6 +659,7 @@ public class Email {
 				{
 					if (searchWord == null || searchWord == "") continue;
 					
+					String searchWordDone = searchWord.toLowerCase();
 					
 					for (int i = 0; i<searchWord.length(); i++)
 					{
@@ -601,10 +670,10 @@ public class Email {
 		    		//System.out.println(searchWordNew);
 					
 					int matches = 0;
-					if ((matches = mail.searchForBadWord(searchWord)) > 0)
+					if ((matches = mail.searchForBadWord(searchWordDone, emailTextDone)) > 0)
 					{
 						counter = counter + matches;
-						this.machtedContext = this.machtedContext + mail.searchForBadWordContext(searchWord) + "\n";
+						this.machtedContext = this.machtedContext + mail.searchForBadWordContext(searchWordDone, emailTextDone) + "\n";
 	
 						if (this.machtedWords.matches(".*" + searchWordNew + ".*") == false)
 						{
@@ -613,8 +682,12 @@ public class Email {
 					}
 				}
 	
-				if (counter >= counterAction) {
-					
+				if (counter == 0)
+				{
+					System.out.println("kein Treffer für -> " + mail.getFrom() + "\n\n");
+				}
+				else if (counter >= counterAction)
+				{
 					// print message
 					StringBuffer printMessage = new StringBuffer();
 					printMessage.append("Absender: " + mail.getFrom() + "\n");
@@ -631,9 +704,10 @@ public class Email {
 					
 					// move mail
 					//mailmove_1.move(mail, dirNew.getPath());
-					
-				} else {
-					System.out.println("kein Treffer für -> " + mail.getFrom() + "\n\n");
+				}
+				else
+				{
+					System.out.println("nicht verdächtig -> " + mail.getFrom() + "\n\n");
 				}
 			}
 			else
@@ -644,5 +718,4 @@ public class Email {
 			mailCounter++;
 		}
 	}
-
 }
